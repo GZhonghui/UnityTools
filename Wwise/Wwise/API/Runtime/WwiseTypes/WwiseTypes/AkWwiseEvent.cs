@@ -41,15 +41,15 @@ namespace AK.Wwise
 		/// </summary>
 		/// <param name="gameObject">The GameObject</param>
 		/// <returns>Returns the playing ID.</returns>
-		public uint Post(UnityEngine.GameObject gameObject, bool needCache = false, double? callTime = null)
+		public uint Post(UnityEngine.GameObject gameObject, bool needSeek = false, bool needCache = true, double? callTime = null)
 		{
 			if (!IsValid())
 				return AkSoundEngine.AK_INVALID_PLAYING_ID;
 
 			// By Zhonghui
 #if AK_WWISE_ADDRESSABLES && UNITY_ADDRESSABLES
-			var args = new object[] { gameObject, needCache, callTime };
-			var argTypes = new System.Type[] { gameObject.GetType(), needCache.GetType(), callTime.GetType() };
+			var args = new object[] { gameObject, needSeek, needCache, callTime };
+			var argTypes = new System.Type[] { gameObject.GetType(), needSeek.GetType(), needCache.GetType(), callTime.GetType() };
 			if (!AkAddressableBankManager.Instance.LoadedBankContainsEvent(Name, Id, this, "Post", argTypes, args, needCache))
 			{
 				return AkSoundEngine.AK_PENDING_EVENT_LOAD_ID;
@@ -60,7 +60,7 @@ namespace AK.Wwise
 			VerifyPlayingID(m_playingId);
 
 			// Skip Load Time
-			if (callTime.HasValue)
+			if (needSeek && callTime.HasValue)
 			{
 				double playTime = UnityEngine.Time.timeAsDouble;
 				int skipTime = (int)((playTime - callTime.Value) * 1000);
@@ -80,17 +80,17 @@ namespace AK.Wwise
 		/// <param name="cookie">Optional cookie received by the callback</param>
 		/// <returns>Returns the playing ID.</returns>
 		public uint Post(UnityEngine.GameObject gameObject, CallbackFlags flags, AkCallbackManager.EventCallback callback,
-			object cookie = null, bool needCache = false, double? callTime = null)
+			object cookie = null, bool needSeek = false, bool needCache = true, double? callTime = null)
 		{
 			if (!IsValid())
 				return AkSoundEngine.AK_INVALID_PLAYING_ID;
 
 			// By Zhonghui
 #if AK_WWISE_ADDRESSABLES && UNITY_ADDRESSABLES
-			var args = new object[] { gameObject, flags, callback, cookie, needCache, callTime };
+			var args = new object[] { gameObject, flags, callback, cookie, needSeek, needCache, callTime };
 			var argTypes = new System.Type[] { typeof(UnityEngine.GameObject), 
 				typeof(CallbackFlags), typeof (AkCallbackManager.EventCallback), typeof(object),
-				needCache.GetType(), callTime.GetType()
+				needSeek.GetType(), needCache.GetType(), callTime.GetType()
 			};
 			if (!AkAddressableBankManager.Instance.LoadedBankContainsEvent(Name, Id, this, "Post", argTypes, args, needCache))
 			{
@@ -102,7 +102,7 @@ namespace AK.Wwise
 			VerifyPlayingID(m_playingId);
 
 			// Skip Load Time
-			if (callTime.HasValue)
+			if (needSeek && callTime.HasValue)
 			{
 				double playTime = UnityEngine.Time.timeAsDouble;
 				int skipTime = (int)((playTime - callTime.Value) * 1000);
@@ -122,17 +122,17 @@ namespace AK.Wwise
 		/// <param name="cookie">Optional cookie received by the callback</param>
 		/// <returns>Returns the playing ID.</returns>
 		public uint Post(UnityEngine.GameObject gameObject, uint flags, AkCallbackManager.EventCallback callback,
-			object cookie = null, bool needCache = false, double? callTime = null)
+			object cookie = null, bool needSeek = false, bool needCache = true, double? callTime = null)
 		{
 			if (!IsValid())
 				return AkSoundEngine.AK_INVALID_PLAYING_ID;
 
 			// By Zhonghui
 #if AK_WWISE_ADDRESSABLES && UNITY_ADDRESSABLES
-			var args = new object[] { gameObject, flags, callback, cookie, needCache, callTime };
+			var args = new object[] { gameObject, flags, callback, cookie, needSeek, needCache, callTime };
 			var argTypes = new System.Type[] { typeof(UnityEngine.GameObject), 
 				typeof(uint), typeof(AkCallbackManager.EventCallback), typeof(object),
-				needCache.GetType(), callTime.GetType()
+				needSeek.GetType(), needCache.GetType(), callTime.GetType()
 			};
 			if (!AkAddressableBankManager.Instance.LoadedBankContainsEvent(Name, Id, this, "Post", argTypes, args, needCache))
 			{
@@ -145,10 +145,12 @@ namespace AK.Wwise
 			VerifyPlayingID(m_playingId);
 
 			// Skip Load Time
-			if (callTime.HasValue)
+			if (needSeek && callTime.HasValue)
 			{
 				double playTime = UnityEngine.Time.timeAsDouble;
 				int skipTime = (int)((playTime - callTime.Value) * 1000);
+
+				// UnityEngine.Debug.Log($"Wwise Skip Time in Ms: {skipTime}, from {callTime.Value} to {playTime}");
 
 				AkSoundEngine.SeekOnEvent(Id, gameObject, skipTime, false, m_playingId);
 			}

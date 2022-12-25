@@ -5,17 +5,17 @@ using UnityEngine;
 public class AD_WwiseEvent : AD_WwiseMonoBase
 {
     [SerializeField]
-    private string[] Events;
+    public List<WwiseEventSelection> Events;
 
     protected override void WwiseInvoke()
     {
         base.WwiseInvoke();
 
-        for (int i = 0; i < Events.Length; i += 1)
+        for (int i = 0; i < Events.Count; i += 1)
         {
-            string eventName = Events[i];
+            string eventName = Events[i].eventName;
 
-            AD_WwiseManager.Instance.PostEvent(eventName, this.gameObject, true);
+            AD_WwiseManager.Instance.PostEvent(eventName, this.gameObject);
         }
     }
 

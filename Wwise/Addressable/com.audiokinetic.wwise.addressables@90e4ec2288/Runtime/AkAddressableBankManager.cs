@@ -382,7 +382,7 @@ namespace AK.Wwise.Unity.WwiseAddressables
 			}
 		}
 
-		public bool LoadedBankContainsEvent(string eventName, uint eventId, object eventObject, string methodName, Type[] methodArgTypes, object[] methodArgs, bool needCache = false)
+		public bool LoadedBankContainsEvent(string eventName, uint eventId, object eventObject, string methodName, Type[] methodArgTypes, object[] methodArgs, bool needCache = true)
 		{
 			foreach (var bank in m_AddressableBanks.Values)
 			{
