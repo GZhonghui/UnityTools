@@ -247,6 +247,12 @@ namespace DtAnimation
                         selectedIndex = exportNameList.Count - 1;
                     }
                 }
+                // Lua not loaded
+                if (selectedIndex == -1 && triggerName.stringValue != "")
+                {
+                    exportNameList.Add(triggerName.stringValue);
+                    selectedIndex = exportNameList.Count - 1;
+                }
 
                 selectedIndex = EditorGUILayout.Popup("Trigger Name", selectedIndex, exportNameList.ToArray());
                 if (selectedIndex > -1 && selectedIndex < exportNameList.Count)
@@ -478,6 +484,20 @@ namespace DtAnimation
                         PropertyVibrato(clipCache);
                         PropertyElasticity(clipCache);
                         break;
+
+                    case DtSerializableSequence.DtAnimationClipType.RectTransformAnchorPos:
+                        PropertyVector2(clipCache, "AnchorPos Target");
+                        PropertySnapping(clipCache);
+                        break;
+
+                    case DtSerializableSequence.DtAnimationClipType.RectTransformSizeDelta:
+                        PropertyVector2(clipCache, "SizeDelta Target");
+                        PropertySnapping(clipCache);
+                        break;
+
+                    case DtSerializableSequence.DtAnimationClipType.ImageColor:
+                        PropertyColor(clipCache, "Target Color");
+                        break;
                 }
             }
         }
@@ -485,6 +505,19 @@ namespace DtAnimation
         private void PropertyVector3(DtSerializableSequence.DtSerializableClip clipCache, string Tips = "Vector3")
         {
             clipCache.m_Values = EditorGUILayout.Vector3Field(Tips, clipCache.m_Values);
+        }
+
+        private void PropertyVector2(DtSerializableSequence.DtSerializableClip clipCache, string Tips = "Vector2")
+        {
+            var kCache = new Vector2(clipCache.m_Values.x, clipCache.m_Values.y);
+            kCache = EditorGUILayout.Vector2Field(Tips, kCache);
+            clipCache.m_Values.x = kCache.x;
+            clipCache.m_Values.y = kCache.y;
+        }
+
+        private void PropertyColor(DtSerializableSequence.DtSerializableClip clipCache, string Tips = "Color")
+        {
+            clipCache.m_Color = EditorGUILayout.ColorField(Tips, clipCache.m_Color);
         }
 
         private void PropertyScale(DtSerializableSequence.DtSerializableClip clipCache)

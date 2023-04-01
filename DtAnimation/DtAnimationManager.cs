@@ -1,9 +1,6 @@
 // Checked
 
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.AddressableAssets;
 
 namespace DtAnimation
 {
@@ -83,7 +80,7 @@ namespace DtAnimation
         {
             if (m_DtSequenceAsset == null || Application.isPlaying) return;
 
-            if(!UnityEditor.AssetDatabase.Contains(m_DtSequenceAsset))
+            if (!UnityEditor.AssetDatabase.Contains(m_DtSequenceAsset))
             {
                 UnityEditor.AssetDatabase.CreateAsset(m_DtSequenceAsset, DTANIM_ASSETPATH);
             }
