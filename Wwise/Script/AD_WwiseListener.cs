@@ -1,5 +1,4 @@
-using System.Collections;
-using System.Collections.Generic;
+using Chessia;
 using UnityEngine;
 
 public class AD_WwiseListener : AkGameObj
@@ -8,27 +7,38 @@ public class AD_WwiseListener : AkGameObj
 
     public void RegPlayer(GameObject Player)
     {
-        if (Player != null) this.Player = Player;
+        if (Player != null)
+        {
+            this.Player = Player;
+            GS_Debug.Log("Wwise Update Local Player: " + Player.name);
+        }
     }
 
     // TODO, Find Player, Return Player Position
-    private GameObject GetPlayer()
+    public GameObject GetPlayer()
     {
         if (Player != null) return Player; return this.gameObject;
     }
 
     public override Vector3 GetPosition()
     {
-        return GetPlayer().transform.position;
+        if (Player != null)
+        {
+            return GetPlayer().transform.position;
+        }
+        else
+        {
+            return transform.position;
+        }
     }
 
     public override Vector3 GetForward()
     {
-        return GetPlayer().transform.forward;
+        return transform.forward;
     }
 
     public override Vector3 GetUpward()
     {
-        return GetPlayer().transform.up;
+        return transform.up;
     }
 }

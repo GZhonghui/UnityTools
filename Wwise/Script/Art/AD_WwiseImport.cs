@@ -6,19 +6,23 @@ using UnityEngine;
 [UnityEngine.DefaultExecutionOrder(-200)]
 public class AD_WwiseImport : MonoBehaviour
 {
+    public GameObject LocalPlayer;
     public GameObject AudioSource;
 
     private void Awake()
     {
+        Debug.Log("Wwise Awake");
         InitWwise();
     }
 
 #if Art_Editor
-    [UnityEditor.MenuItem("Wwise/Init Wwise", false, (int)1)]
+    [UnityEditor.MenuItem("Wwise/Init Wwise", false, (int)2)]
     [UnityEditor.Callbacks.DidReloadScripts] // Unity Hot Reload
 #endif
     public static void DoInitWwise()
     {
+        if (Application.isPlaying) return;
+
         var akIniter = GameObject.FindObjectOfType<AkInitializer>();
         if (akIniter == null)
         {
@@ -50,6 +54,18 @@ public class AD_WwiseImport : MonoBehaviour
 
         AD_WwiseManager.Instance.UninitWise();
         AD_WwiseManager.Instance.InitWwise(createWwise: false);
+
+#if Art_Editor
+        var mainCamera = FindObjectOfType<AD_WwiseListener>();
+        var mainImporter = FindObjectOfType<AD_WwiseImport>();
+        if (mainCamera != null && mainImporter != null)
+        {
+            if(mainImporter.LocalPlayer != null)
+            {
+                mainCamera.RegPlayer(mainImporter.LocalPlayer);
+            }
+        }
+#endif
 
         akIniter.enabled = true; // OnEnable: Init Wwise
     }

@@ -8,16 +8,16 @@ internal static class ParseWwiseJson
 
     // Don't Run in Client
 #if Art_Editor
-    [UnityEditor.MenuItem("Wwise/Parse Wwise Json", false, (int)0)]
+	[UnityEditor.MenuItem("Wwise/Parse Wwise Json", false, (int)0)]
 #endif
     public static void DoParseWwiseJson()
     {
         // Deprecation
         /*
-        string pythonEnv = System.IO.File.ReadAllText(System.IO.Path.Combine(UnityEngine.Application.dataPath,
-            "WwiseData", "Editor", "PyEnv.txt"
-        ));
-        */
+		string pythonEnv = System.IO.File.ReadAllText(System.IO.Path.Combine(UnityEngine.Application.dataPath,
+			"WwiseData", "Editor", "PyEnv.txt"
+		));
+		*/
 
         var start = new System.Diagnostics.ProcessStartInfo();
 

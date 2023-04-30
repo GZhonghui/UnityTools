@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using UnityEngine.AddressableAssets;
 
 namespace AK
 {
@@ -21,13 +20,13 @@ namespace AK
 
         public static Dictionary<uint, WwiseObject> dataBanks = new Dictionary<uint, WwiseObject>();
         public static Dictionary<string, uint> dataRevBanks = new Dictionary<string, uint>();
-        
+
         public static Dictionary<uint, WwiseObject> dataEvents = new Dictionary<uint, WwiseObject>();
         public static Dictionary<string, uint> dataRevEvents = new Dictionary<string, uint>();
 
         public static Dictionary<uint, WwiseObject> dataDialogueEvents = new Dictionary<uint, WwiseObject>();
         public static Dictionary<string, uint> dataRevDialogueEvents = new Dictionary<string, uint>();
-        
+
         public static Dictionary<uint, WwiseObject> dataGameParameters = new Dictionary<uint, WwiseObject>();
         public static Dictionary<string, uint> dataRevGameParameters = new Dictionary<string, uint>();
 

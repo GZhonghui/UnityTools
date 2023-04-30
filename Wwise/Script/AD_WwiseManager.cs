@@ -1,9 +1,11 @@
+﻿// 有些业务逻辑写在了底层，比如*_Start结束自动接*_End事件，设计不合理，历史问题
+
+using AK.Wwise.Unity.WwiseAddressables;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
-using AK.Wwise.Unity.WwiseAddressables;
+using UnityEngine.SceneManagement;
 
 public class AD_WwiseManager
 {
@@ -17,10 +19,11 @@ public class AD_WwiseManager
         BAD_ID,
         CANT_LOAD_ASSET,
         CANT_FIND_CAMERA,
+        CANT_FIND_SOUND_ROOT,
         LOAD_INIT_BANK,
     }
 
-    private bool m_bLog = true;
+    private bool m_bLog = false;
     private int m_iQueueMaxSize = 128;
 
     #region Signleton
@@ -57,6 +60,8 @@ public class AD_WwiseManager
     private Dictionary<uint, WwiseAddressableSoundBank> m_LoadedBankRef = new Dictionary<uint, WwiseAddressableSoundBank>();
 
     private Dictionary<uint, AK.Wwise.Event> m_UsedEvents = new Dictionary<uint, AK.Wwise.Event>();
+
+    private HashSet<GameObject> m_RegedGo = new HashSet<GameObject>();
 
     // Delay Calls
     private class LoadBankCall
@@ -108,6 +113,7 @@ public class AD_WwiseManager
         private GameObject m_Go;
         private bool m_NeedSeek;
         private bool m_NeedCache;
+        private int? m_delayPost;
         private int? m_Duration;
         private int? m_StopTransition;
         private AkMIDIPostArray m_MidiArray;
@@ -117,31 +123,31 @@ public class AD_WwiseManager
 
         public PostEventCall(
             uint eventId, GameObject Go, bool needSeek = false, bool needCache = true,
-            int? Duration = null, int? StopTransition = null,
+            int? delayPost = null, int? Duration = null, int? StopTransition = null,
             AkMIDIPostArray midiArray = null, Action eventDoneCallback = null,
             bool Stop = false, bool autoExecute = false
         )
         {
             m_EventId = eventId;
             m_EventName = null;
-            ConstructCommon(Go, needSeek, needCache, Duration, StopTransition, midiArray, eventDoneCallback, Stop, autoExecute);
+            ConstructCommon(Go, needSeek, needCache, delayPost, Duration, StopTransition, midiArray, eventDoneCallback, Stop, autoExecute);
         }
 
         public PostEventCall(
             string eventName, GameObject Go, bool needSeek = false, bool needCache = true,
-            int? Duration = null, int? StopTransition = null,
+            int? delayPost = null, int? Duration = null, int? StopTransition = null,
             AkMIDIPostArray midiArray = null, Action eventDoneCallback = null,
             bool Stop = false, bool autoExecute = false
         )
         {
             m_EventId = null;
             m_EventName = eventName;
-            ConstructCommon(Go, needSeek, needCache, Duration, StopTransition, midiArray, eventDoneCallback, Stop, autoExecute);
+            ConstructCommon(Go, needSeek, needCache, delayPost, Duration, StopTransition, midiArray, eventDoneCallback, Stop, autoExecute);
         }
 
         private void ConstructCommon(
             GameObject Go, bool needSeek, bool needCache,
-            int? Duration, int? StopTransition,
+            int? delayPost, int? Duration, int? StopTransition,
             AkMIDIPostArray midiArray, Action eventDoneCallback,
             bool Stop, bool autoExecute
         )
@@ -149,6 +155,7 @@ public class AD_WwiseManager
             m_Go = Go;
             m_NeedSeek = needSeek;
             m_NeedCache = needCache;
+            m_delayPost = delayPost;
             m_Duration = Duration;
             m_StopTransition = StopTransition;
             m_MidiArray = midiArray;
@@ -175,8 +182,8 @@ public class AD_WwiseManager
                 // Post Event
                 if (m_MidiArray == null)
                 {
-                    if (m_EventId.HasValue) Manager.PostEvent(m_EventId.Value, m_Go, m_Duration, m_StopTransition, m_NeedSeek, m_NeedCache, m_EventDoneCallback);
-                    else Manager.PostEvent(m_EventName, m_Go, m_Duration, m_StopTransition, m_NeedSeek, m_NeedCache, m_EventDoneCallback);
+                    if (m_EventId.HasValue) Manager.PostEvent(m_EventId.Value, m_Go, m_delayPost, m_Duration, m_StopTransition, m_NeedSeek, m_NeedCache, m_EventDoneCallback);
+                    else Manager.PostEvent(m_EventName, m_Go, m_delayPost, m_Duration, m_StopTransition, m_NeedSeek, m_NeedCache, m_EventDoneCallback);
                 }
                 // Post Midi
                 else
@@ -220,9 +227,29 @@ public class AD_WwiseManager
         return "Assets/ArtRes/Bundle/Audio/Wwise/Define/WwiseDefine.json";
     }
 
+    public static string GetMapAmbientAssetPath()
+    {
+        return "Assets/ArtRes/Bundle/Audio/Wwise/MapAmbient";
+    }
+
+    public static string GetMapAmbientAddressablePath(string mapName)
+    {
+        return $"{GetMapAmbientAssetPath()}/{mapName}.json";
+        // return System.IO.Path.Combine(GetMapAmbientAssetPath(), mapName + ".json");
+    }
+
+    public static string GetMapAmbientPath(string mapName)
+    {
+        return System.IO.Path.Combine(Application.dataPath, "ArtRes/Bundle/Audio/Wwise/MapAmbient", mapName + ".json");
+    }
+
     public static string GetAddressableInitializationSettingsPath()
     {
+#if Art_Editor
         return "Assets/Wwise/ScriptableObjects/AkWwiseInitializationSettings.asset";
+#else
+        return "Assets/Dependency/Wwise/ScriptableObjects/AkWwiseInitializationSettings.asset";
+#endif
     }
 
     public static string GetLuaIdTableSourceFilePath()
@@ -235,9 +262,27 @@ public class AD_WwiseManager
         return System.IO.Path.Combine(UnityEngine.Application.dataPath, "Script/LuaScript/Audio/Lua_AD_WwiseDefine.lua");
     }
 
+    public static string GetWwiseImporterPrefabPath()
+    {
+        return "Assets/Scenes/Wwise/WwiseImporter.prefab";
+    }
+
     public static string GetBanksPath()
     {
         return "Assets/ArtRes/Bundle/Audio/Wwise/Banks";
+    }
+
+    public GameObject GetLocalPlayer()
+    {
+        if (m_MainCamera != null)
+        {
+            AD_WwiseListener mainListener = m_MainCamera.GetComponent<AD_WwiseListener>();
+            if (mainListener != null)
+            {
+                return mainListener.GetPlayer();
+            }
+        }
+        return null;
     }
 
     // Init in Game Main
@@ -356,9 +401,14 @@ public class AD_WwiseManager
 
         if (m_bLog) Debug.Log("Wwise Uniniting");
 
+        AkSoundEngine.StopAll();
+
+        AkSoundEngine.UnregisterAllGameObj();
+        m_RegedGo.Clear();
+
         m_MainCamera = null;
 
-        if(m_kGlobal)
+        if (m_kGlobal)
         {
             // GameObject.DestroyImmediate(m_kGlobal, true);
             m_kGlobal = null;
@@ -632,7 +682,10 @@ public class AD_WwiseManager
     }
 
     // Not Recommend
-    public AD_WwiseCode PostEvent(string eventName, GameObject Go = null, int? Duration = null, int? stopTransition = null, bool needSeek = false, bool needCache = true, Action Callback = null)
+    public AD_WwiseCode PostEvent(
+        string eventName, GameObject Go = null,
+        int? delayPost = null, int? Duration = null, int? stopTransition = null, bool needSeek = false,
+        bool needCache = true, Action Callback = null)
     {
         if (eventName == null) return AD_WwiseCode.BAD_NAME;
 
@@ -641,7 +694,7 @@ public class AD_WwiseManager
             if (AK.WwiseDefine.dataRevEvents.ContainsKey(eventName))
             {
                 uint eventId = AK.WwiseDefine.dataRevEvents[eventName];
-                return PostEvent(eventId, Go, Duration, stopTransition, needSeek, needCache, Callback);
+                return PostEvent(eventId, Go, delayPost, Duration, stopTransition, needSeek, needCache, Callback);
             }
             else
             {
@@ -652,17 +705,29 @@ public class AD_WwiseManager
 
         if (m_bLog) Debug.Log("Wwise Event Will be Delayed: " + eventName);
         PushQueueWithLimit<PostEventCall>(
-            new PostEventCall(eventName, Go, needSeek, needCache, Duration, stopTransition, eventDoneCallback: Callback), m_PostEventCallQueue
+            new PostEventCall(
+                eventName, Go, needSeek, needCache, delayPost, Duration, stopTransition, eventDoneCallback: Callback
+            ), m_PostEventCallQueue
         );
 
         return AD_WwiseCode.DELAY;
     }
 
     // Use Carefully with Cache Event! You don't need to cache event at most time
-    public AD_WwiseCode PostEvent(uint eventId, GameObject Go = null, int? Duration = null, int? stopTransition = null, bool needSeek = false, bool needCache = true, Action Callback = null)
+    public AD_WwiseCode PostEvent(
+        uint eventId, GameObject Go = null,
+        int? delayPost = null, int? Duration = null, int? stopTransition = null, bool needSeek = false,
+        bool needCache = true, Action Callback = null)
     {
         if (InitBankLoaded())
         {
+            if (delayPost.HasValue && delayPost.Value > 0)
+            {
+                PostEventWithDelay(delayPost.Value, eventId, Go, Duration, stopTransition, needSeek, needCache, Callback);
+
+                return AD_WwiseCode.DELAY;
+            }
+
             uint bankId = 0;
 
             AK.Wwise.Event Event = TryGetEvent(eventId, out bankId);
@@ -684,15 +749,27 @@ public class AD_WwiseManager
 
             if (Go != null)
             {
-                Debug.Log($"Wwise Play: {AK.WwiseDefine.dataEvents[eventId].Name}");
+                if (m_bLog)
+                {
+                    Chessia.GS_Debug.Log($"Wwise Play: {AK.WwiseDefine.dataEvents[eventId].Name}");
+                }
 
+                if (Go.GetComponent<AkGameObj>() == null)
+                {
+                    Go.AddComponent<AkGameObj>();
+                }
                 AkSoundEngine.RegisterGameObj(Go);
+                m_RegedGo.Add(Go);
+
+                AK.Wwise.Event.AD_PlayStatus playStatus = new AK.Wwise.Event.AD_PlayStatus();
+
                 uint playingId = Event.Post(Go, (uint)AkCallbackType.AK_EndOfEvent, (in_cookie, in_type, in_info) =>
                 {
                     // Unload After Event Done
                     UnloadBank(bankId);
                     Callback?.Invoke(); // Lua
-                }, needSeek: needSeek, needCache: true, callTime: callTime); // HARD CODE: Set needCache to True to Mirror Load & Unload
+                }, needSeek: needSeek, needCache: true, callTime: callTime, playStatus: playStatus);
+                // HARD CODE: Set needCache to True to Mirror Load & Unload
 
                 if (Duration.HasValue)
                 {
@@ -700,7 +777,7 @@ public class AD_WwiseManager
                     // System.Threading.Tasks.Task.Run(() => StopEventWithDelay(Duration.Value, eventId, Go, stopTransition));
 
                     // Main Thread
-                    StopEventWithDelay(Duration.Value, eventId, Go, stopTransition);
+                    StopEventWithDelay(Duration.Value, eventId, playStatus, Go, stopTransition);
                 }
 
                 return AD_WwiseCode.SUCCESS;
@@ -711,17 +788,37 @@ public class AD_WwiseManager
 
         if (m_bLog) Debug.Log("Wwise Event Will be Delayed: " + eventId.ToString());
         PushQueueWithLimit<PostEventCall>(
-            new PostEventCall(eventId, Go, needSeek, needCache, Duration, stopTransition, eventDoneCallback: Callback), m_PostEventCallQueue
+            new PostEventCall(
+                eventId, Go, needSeek, needCache, delayPost, Duration, stopTransition, eventDoneCallback: Callback
+            ), m_PostEventCallQueue
         );
 
         return AD_WwiseCode.DELAY;
     }
 
     // Helper
-    // TODO
-    private async void StopEventWithDelay(int Delay, uint eventId, GameObject Go = null, int? stopTransition = null)
+    private async void PostEventWithDelay(int Delay, uint eventId, GameObject Go = null,
+        int? Duration = null, int? stopTransition = null, bool needSeek = false,
+        bool needCache = true, Action Callback = null)
     {
         await System.Threading.Tasks.Task.Delay(UT_Math.ABS(Delay));
+        AD_WwiseManager.Instance.PostEvent(eventId, Go, delayPost: null, Duration, stopTransition, needSeek, needCache, Callback);
+    }
+
+    // Helper
+    private async void StopEventWithDelay(
+        int Delay, uint eventId, AK.Wwise.Event.AD_PlayStatus playStatus, GameObject Go = null, int? stopTransition = null
+    )
+    {
+        await System.Threading.Tasks.Task.Delay(UT_Math.ABS(Delay));
+        /*
+        if (playStatus.m_bPlaying)
+        {
+            AkSoundEngine.StopPlayingID(playStatus.m_uPlayingId,
+                stopTransition.HasValue ? stopTransition.Value : 0, AkCurveInterpolation.AkCurveInterpolation_Linear
+                );
+        }
+        */
         AD_WwiseManager.Instance.StopEvent(eventId, Go, stopTransition, Delay > 0); // Auto Stop
     }
 
@@ -777,7 +874,13 @@ public class AD_WwiseManager
 
             if (Go != null)
             {
+                if (Go.GetComponent<AkGameObj>() == null)
+                {
+                    Go.AddComponent<AkGameObj>();
+                }
                 AkSoundEngine.RegisterGameObj(Go);
+                m_RegedGo.Add(Go);
+
                 Event.Stop(Go, stopTransition.HasValue ? stopTransition.Value : 0);
                 if (m_bLog) Debug.Log($"Stop Event: {eventId} at Go: {Go.GetInstanceID()}");
 
@@ -785,13 +888,25 @@ public class AD_WwiseManager
                 // Auto Post a End Event if Auto Stop a Loop Event
                 if (autoExecute)
                 {
+                    const string strStart = "_Start";
                     const string strLoop = "_Loop";
                     const string strEnd = "_End";
 
                     string eventName = AK.WwiseDefine.dataEvents[eventId].Name;
+                    string endEventName = null;
+
+                    if (eventName.EndsWith(strStart))
+                    {
+                        endEventName = eventName.Substring(0, eventName.Length - strStart.Length) + strEnd;
+                    }
+
                     if (eventName.EndsWith(strLoop))
                     {
-                        string endEventName = eventName.Substring(0, eventName.Length - strLoop.Length) + strEnd;
+                        endEventName = eventName.Substring(0, eventName.Length - strLoop.Length) + strEnd;
+                    }
+
+                    if (endEventName != null)
+                    {
                         PostEvent(endEventName, Go); // Try Post
                     }
                 }
@@ -851,7 +966,7 @@ public class AD_WwiseManager
 
             LoadBank(bankId);
 
-            Event.PostMIDI(Go, midiArray);
+            // Event.PostMIDI(Go, midiArray);
 
             UnloadBank(bankId); // Work?
 
@@ -894,6 +1009,38 @@ public class AD_WwiseManager
     public AD_WwiseCode SetSwitch(uint switchGroup, uint switchTarget, GameObject Go = null)
     {
         if (Go == null) Go = m_MainCamera;
+        if (Go == null) return AD_WwiseCode.CANT_FIND_CAMERA;
+
+        if (Go.GetComponent<AkGameObj>() == null)
+        {
+            Go.AddComponent<AkGameObj>();
+        }
+        AkSoundEngine.RegisterGameObj(Go);
+        m_RegedGo.Add(Go);
+
+        AKRESULT Res = AkSoundEngine.SetSwitch(switchGroup, switchTarget, Go);
+
+        if (Res != AKRESULT.AK_Success)
+        {
+            if (m_bLog) Debug.Log("Wwise Set Switch Failed, " + Res.ToString());
+            return AD_WwiseCode.ENGINE_FAILED;
+        }
+
+        return AD_WwiseCode.SUCCESS;
+    }
+
+    // No Delay Queue
+    public AD_WwiseCode SetSwitch(string switchGroup, string switchTarget, GameObject Go = null)
+    {
+        if (Go == null) Go = m_MainCamera;
+        if (Go == null) return AD_WwiseCode.CANT_FIND_CAMERA;
+
+        if (Go.GetComponent<AkGameObj>() == null)
+        {
+            Go.AddComponent<AkGameObj>();
+        }
+        AkSoundEngine.RegisterGameObj(Go);
+        m_RegedGo.Add(Go);
 
         AKRESULT Res = AkSoundEngine.SetSwitch(switchGroup, switchTarget, Go);
 
@@ -927,6 +1074,19 @@ public class AD_WwiseManager
 
         // TODO
         AkAddressableBankManager.Instance.SetLanguageAndReloadLocalizedBanks(languageName);
+        return AD_WwiseCode.SUCCESS;
+    }
+
+    // Static Sound
+    public AD_WwiseCode LoadMapAmbient(string mapName = null)
+    {
+        var activeScene = SceneManager.GetActiveScene();
+        mapName = mapName == null ? activeScene.name : mapName;
+        if (activeScene.name != mapName) return AD_WwiseCode.BAD_NAME;
+
+        GameObject soundRoot = GameObject.Find(mapName + "/_sound");
+        if (soundRoot == null) return AD_WwiseCode.CANT_FIND_SOUND_ROOT;
+        AD_WwiseMapAmbient.LoadMapAmbient(soundRoot, mapName, true);
         return AD_WwiseCode.SUCCESS;
     }
 }

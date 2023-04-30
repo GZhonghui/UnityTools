@@ -1,7 +1,8 @@
-using System.Collections;
+#if UNITY_EDITOR
+
 using System.Collections.Generic;
-using UnityEngine;
 using UnityEditor;
+using UnityEngine;
 
 public class WwiseEventPicker : EditorWindow
 {
@@ -185,14 +186,24 @@ public class WwiseEventPicker : EditorWindow
         GUI.color = Color.white;
     }
 
-    public static void WwiseEventProperty(WwiseEventSelection eventSelection, string Tips = "Wwise Event", SerializedObject serializedObject = null)
+    public static bool WwiseEventProperty(
+        string eventSelection, string Tips = "Event", System.Action<string> selectedCallback = null,
+        bool? is3DSound = null
+    )
     {
+        bool clicked3DButton = false;
+
         GUILayout.BeginHorizontal();
 
-        GUILayout.Label(Tips);
+        GUILayout.Label(Tips, GUILayout.Width(72));
 
-        GUI.color = AK.WwiseDefine.dataRevEvents.ContainsKey(eventSelection.eventName) ? Color.green : Color.red;
-        bool Select = GUILayout.Button(eventSelection.eventName);
+        if (is3DSound.HasValue)
+        {
+            clicked3DButton = GUILayout.Button(is3DSound.Value ? "3D" : "2D", GUILayout.Width(36));
+        }
+
+        GUI.color = AK.WwiseDefine.dataRevEvents.ContainsKey(eventSelection) ? Color.green : Color.red;
+        bool Select = GUILayout.Button(eventSelection);
         GUI.color = Color.white;
 
         GUILayout.EndHorizontal();
@@ -200,13 +211,16 @@ public class WwiseEventPicker : EditorWindow
         if (Select)
         {
             var Picker = EditorWindow.GetWindow<WwiseEventPicker>();
-            Picker.InitWith(eventSelection.eventName, () =>
+            Picker.InitWith(eventSelection, () =>
             {
-                serializedObject?.Update();
-                Picker.GetResult(out eventSelection.eventName);
-                serializedObject?.ApplyModifiedProperties();
+                Picker.GetResult(out string selectedEventName);
+                selectedCallback?.Invoke(selectedEventName);
             });
             Picker.Show();
         }
+
+        return clicked3DButton;
     }
 }
+
+#endif // UNITY_EDITOR

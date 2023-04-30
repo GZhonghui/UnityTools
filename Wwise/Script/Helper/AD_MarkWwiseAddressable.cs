@@ -1,5 +1,9 @@
 #if UNITY_EDITOR
-internal static class MarkWwiseAddressable
+
+using UnityEditor;
+using UnityEditor.AddressableAssets.Settings.GroupSchemas;
+
+public static class MarkWwiseAddressable
 {
     // Addressable Tools, Call from Other Place:
     // ArtEditor: Parse Wwise Json
@@ -8,6 +12,14 @@ internal static class MarkWwiseAddressable
     public static void DoMarkWwiseAddressable()
     {
         UnityEngine.Debug.Log("Wwise Assets Updated in Addressable Group");
+
+        var kPaths = System.IO.Directory.GetFiles("Assets/ArtRes/Bundle/Audio", "*", System.IO.SearchOption.AllDirectories);// UnityEditor.FileUtil.CopyFileOrDirectory ("Assets/ArtRes/Bundle/Audio");
+        for (int i = 0; i < kPaths.Length; i++)
+        {
+            kPaths[i] = kPaths[i].Replace("\\", "/");
+
+        }
+        AK.Wwise.Unity.WwiseAddressables.WwiseBankPostProcess.UpdateAssetReferences(kPaths);
 
         var Setting = UnityEditor.AddressableAssets.AddressableAssetSettingsDefaultObject.Settings;
         var Group = Setting.FindGroup("Audio");
@@ -22,6 +34,20 @@ internal static class MarkWwiseAddressable
             EntryAdded.Add(Entry);
         };
 
+        System.Action<string, string, string> AddAllToAa = (findPath, fileFilter, fileExtension) =>
+        {
+            var Guids = UnityEditor.AssetDatabase.FindAssets(fileFilter, new[] { findPath });
+
+            for (int i = 0; i < Guids.Length; i += 1)
+            {
+                var Guid = Guids[i];
+                var Path = UnityEditor.AssetDatabase.GUIDToAssetPath(Guid);
+
+                // Bank Ref
+                if (Path.EndsWith(fileExtension)) AddToAa(Guid);
+            }
+        };
+
         // Init Setting
         AddToAa(UnityEditor.AssetDatabase.AssetPathToGUID(AD_WwiseManager.GetAddressableInitializationSettingsPath()));
 
@@ -29,16 +55,9 @@ internal static class MarkWwiseAddressable
         AddToAa(UnityEditor.AssetDatabase.AssetPathToGUID(AD_WwiseManager.GetWwiseIdJsonPath()));
 
         // Bank Refs
-        var Guids = UnityEditor.AssetDatabase.FindAssets("t:ScriptableObject", new[] { AD_WwiseManager.GetBanksPath() });
+        AddAllToAa(AD_WwiseManager.GetBanksPath(), "t:ScriptableObject", ".asset");
 
-        for (int i = 0; i < Guids.Length; i += 1)
-        {
-            var Guid = Guids[i];
-            var Path = UnityEditor.AssetDatabase.GUIDToAssetPath(Guid);
-
-            // Bank Ref
-            if (Path.EndsWith(".asset")) AddToAa(Guid);
-        }
+        AddAllToAa(AD_WwiseManager.GetMapAmbientAssetPath(), "t:TextAsset", ".json");
 
         Setting.SetDirty(UnityEditor.AddressableAssets.Settings.AddressableAssetSettings.ModificationEvent.EntryMoved, EntryAdded, true);
 
@@ -51,7 +70,7 @@ internal static class MarkWwiseAddressable
     {
         UnityEngine.Debug.Log("Wwise Updateing Banks Aa Group");
 
-#region Wwise Info
+        #region Wwise Info
         string bankJsonPath = System.IO.Path.Combine(
             UnityEngine.Application.dataPath, "..", AD_WwiseManager.GetBanksPath(), Platform, "SoundbanksInfo.json"
         );
@@ -69,7 +88,7 @@ internal static class MarkWwiseAddressable
 
         // System.IO.File.WriteAllText(bankJsonPath, jsonText);
         // System.IO.File.WriteAllText(bankXmlPath, xmlText);
-#endregion
+        #endregion
 
         // Not Safe
         var Setting = UnityEditor.AddressableAssets.AddressableAssetSettingsDefaultObject.Settings;
@@ -79,6 +98,15 @@ internal static class MarkWwiseAddressable
         System.Action<string, string> AddToAaGroup = (Guid, groupName) =>
         {
             var Group = Setting.FindGroup(groupName);
+
+            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android)
+            {
+                Group.GetSchema<BundledAssetGroupSchema>().IncludeInBuild = groupName.Contains("Android");
+            }
+            else if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.StandaloneWindows64)
+            {
+                Group.GetSchema<BundledAssetGroupSchema>().IncludeInBuild = groupName.Contains("Windows");
+            }
 
             var Entry = Setting.CreateOrMoveEntry(Guid, Group, readOnly: false, postEvent: false);
             Entry.address = UnityEditor.AssetDatabase.GUIDToAssetPath(Guid);

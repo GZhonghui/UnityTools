@@ -2,26 +2,27 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+[DisallowMultipleComponent]
 public class AD_WwiseBank : AD_WwiseMonoBase
 {
     [SerializeField]
-    private string[] LoadBanks;
+    public List<string> m_LoadBanks;
 
     // To Unload
-    private Queue<string> LoadedBanks = new Queue<string>();
+    private Queue<string> m_LoadedBanks = new Queue<string>();
 
     protected override void WwiseInvoke()
     {
         base.WwiseInvoke();
 
         // Load Banks
-        for (int i = 0; i < LoadBanks.Length; i++)
+        for (int i = 0; i < m_LoadBanks.Count; i++)
         {
-            string BankName = LoadBanks[i];
+            string BankName = m_LoadBanks[i];
             if (BankName.Length > 0)
             {
                 AD_WwiseManager.Instance.LoadBank(BankName);
-                LoadedBanks.Enqueue(BankName);
+                m_LoadedBanks.Enqueue(BankName);
             }
         }
     }
@@ -31,12 +32,12 @@ public class AD_WwiseBank : AD_WwiseMonoBase
         base.WwiseDestroy();
 
         // Unload Banks
-        while (LoadedBanks.Count > 0)
+        while (m_LoadedBanks.Count > 0)
         {
-            string BankName = LoadedBanks.Peek();
+            string BankName = m_LoadedBanks.Peek();
 
             AD_WwiseManager.Instance.UnloadBank(BankName);
-            LoadedBanks.Dequeue();
+            m_LoadedBanks.Dequeue();
         }
     }
 }
